@@ -1,0 +1,14 @@
+{
+    "name": "mi-squared/oe-sftp",
+    "description": "SFTP client for OpenEMR",
+    "type": "openemr-module",
+    "license": "GNU General Public License 3",
+    "authors": [
+        {
+            "name": "Ken Chapple",
+            "email": "ken.chapple@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {}
+}
