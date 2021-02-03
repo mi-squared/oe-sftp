@@ -1,0 +1,9 @@
+<?php
+return [
+    '',
+    'SERVERS' => [
+        'nextstep' => [
+            FETCH_ONLY => false, // Set to true if you'll also be putting files (adds remote input dir)
+        ]
+    ]
+];
