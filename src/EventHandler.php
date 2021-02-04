@@ -24,16 +24,11 @@ class EventHandler
      */
     public function init()
     {
-        $container = $GLOBALS["kernel"]->getContainer();
-        $definition = new Definition(Api::class, [new Reference('service_container')]);
-        $definition->setPublic(true);
-        $container->setDefinition('sftp_api', $definition);
-        $container->compile();
+//        $container = $GLOBALS["kernel"]->getContainer();
+//        $container->set('sftp_api', new Api());
 
         // Tell the system the event handler is initializing
         $sftpBootEvent = new SFTPBootEvent();
         $sftpBootEvent = $GLOBALS["kernel"]->getEventDispatcher()->dispatch(SFTPBootEvent::EVENT_HANDLE, $sftpBootEvent, 10);
-        $servers = $sftpBootEvent->getRegisteredServers();
-
     }
 }

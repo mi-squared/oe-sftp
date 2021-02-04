@@ -12,6 +12,8 @@ use Mi2\SFTP\Models\Batch;
 use Mi2\SFTP\Models\File;
 use Mi2\SFTP\Models\FetchFileBatch;
 use Mi2\SFTP\Models\SFTPServer;
+use OpenEMR\Events\Globals\GlobalsInitializedEvent;
+use OpenEMR\Services\Globals\GlobalSetting;
 
 class SFTPService
 {
@@ -85,17 +87,73 @@ class SFTPService
         return $enabled;
     }
 
-    public static function getServer($serverId)
+    public static function put($server_id, $file_contents, $ext = 'json')
     {
-        $serverId = $GLOBALS["ff_server_id_$serverId"];
-        $host = $GLOBALS["ff_server_host_$serverId"];
-        $remoteDir = $GLOBALS["ff_server_remote_dir_$serverId"];
-        $username = $GLOBALS["ff_server_username_$serverId"];
-        $password = $GLOBALS["ff_server_password_$serverId"];
-        $deleteAfterFetch = ($GLOBALS["ff_server_remote_delete_$serverId"] == "1" ) ? true : false;
-        $enabled = ($GLOBALS["ff_server_enable_$serverId"] == "1" ) ? true : false;
+        $server = self::makeServerUsingGlobalsId($server_id);
+        return $server->file_put_contents_background($file_contents, $ext);
+    }
 
-        return new SFTPServer($serverId, $host, $remoteDir, $username, $password, $deleteAfterFetch, $enabled);
+    /**
+     * Build a Global configuration for an SFTP server.
+     *
+     * @param GlobalsInitializedEvent $event
+     * @param $name Specify the name of the server (for labels)
+     * @param $id Specify the ID of the server (for retrieving)
+     * @throws \Exception
+     */
+    public static function buildServerGlobalConfig(GlobalsInitializedEvent $event, $name, $id)
+    {
+        $event->getGlobalsService()->createSection("SFTP", "Connectors");
+
+        $setting = new GlobalSetting( "$name SFTP Enable", 'bool', false, "Enable SFTP sending and receiving" );
+        $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_enable_$id", $setting );
+
+        $setting = new GlobalSetting( "$name SFTP Delete After Put", 'bool', false, "Delete local files after putting" );
+        $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_delete_put_$id", $setting );
+
+        $setting = new GlobalSetting( "$name SFTP Delete After Fetch", 'bool', false, "Delete remote files after fetching them" );
+        $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_delete_fetch_$id", $setting );
+
+        $setting = new GlobalSetting( "$name SFTP Username", 'text', "openemr_service", "SFTP login" );
+        $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_username_$id", $setting );
+
+        $setting = new GlobalSetting( "$name SFTP Password", 'text', "******", "SFTP Password" );
+        $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_password_$id", $setting );
+
+        $setting = new GlobalSetting( "$name SFTP Host", 'text', "oprepo.officepracticum.com", "Remote host" );
+        $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_host_$id", $setting );
+
+        $setting = new GlobalSetting( "$name SFTP Port", 'text', 22, "Remote Port" );
+        $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_port_$id", $setting );
+
+        $setting = new GlobalSetting( "$name SFTP Local Outbox Dir", 'text', "/$id/out", "Where OpenEMR places output relative to documents dir" );
+        $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_local_out_dir_$id", $setting );
+
+        $setting = new GlobalSetting( "$name SFTP Remote Inbox Dir", 'text', '/in', "Where NextStep receives input on remote host" );
+        $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_remote_in_dir_$id", $setting );
+
+        $setting = new GlobalSetting( "$name SFTP Remote Outbox Dir", 'text', '/out', "Where NextStep places output on remote host" );
+        $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_remote_out_dir_$id", $setting );
+
+        return $event;
+    }
+
+    public static function makeServerUsingGlobalsId($id)
+    {
+        $server = new SFTPServer(
+            $id,
+            $GLOBALS["oe_sftp_server_host_$id"],
+            $GLOBALS["oe_sftp_server_username_$id"],
+            $GLOBALS["oe_sftp_server_password_$id"],
+            $GLOBALS["oe_sftp_server_remote_out_dir_$id"],
+            $GLOBALS["oe_sftp_server_remote_in_dir_$id"],
+            $GLOBALS["oe_sftp_server_local_out_dir_$id"],
+            $GLOBALS["oe_sftp_server_delete_put_$id"],
+            $GLOBALS["oe_sftp_server_delete_fetch_$id"],
+            $GLOBALS["oe_sftp_server_enable_$id"]
+        );
+
+        return $server;
     }
 
     public static function insertBatch(Batch $batch)

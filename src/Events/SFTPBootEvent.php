@@ -25,15 +25,4 @@ class SFTPBootEvent extends Event
 {
     const EVENT_HANDLE = 'sftp.boot';
 
-    protected $registeredServers = [];
-
-    public function registerServer(SFTPServer $server)
-    {
-        $this->registeredServers[] = $server;
-    }
-
-    public function getRegisteredServers()
-    {
-        return $this->registeredServers;
-    }
 }
