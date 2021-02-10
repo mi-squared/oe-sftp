@@ -127,7 +127,7 @@ class SFTPServer
         $server_id = $this->getId();
         // Tell the server to SFTP the file
         $script = __DIR__ . "/../../put.php";
-        $proc = shell_exec("$php $script '$server_id' '$file' &");
+        $proc = shell_exec("$php $script '$server_id' '$file' > /dev/null 2>&1 &");
         if ($this->debugPrint) {
             echo $proc;
         }

@@ -47,14 +47,26 @@ class PutFileBatch
         // Attempt to login and change to remote directory
         $sftp = $this->getServer()->connect();
         if (false === $sftp) {
-            die("Could not connect\n");
+            $error = $sftp->getLastSFTPError();
+            die("Could not connect\n$error\n");
         }
 
-        $sftp->chdir($this->server->getRemotePutDir());
+        if (false === $sftp->chdir($this->server->getRemotePutDir())) {
+            $sftp->disconnect();
+            $error = $sftp->getLastSFTPError();
+            die("Could not change directory to `" . $this->server->getRemotePutDir() . "`\n$error\n");
+        }
 
         $filename = basename($path_to_file);
 
-        $return = $sftp->put($filename, $put_file_contents);
+        if (false === $sftp->put($filename, $put_file_contents)) {
+            $sftp->disconnect();
+            $error = $sftp->getLastSFTPError();
+            die("Could not put remote file file `" . $filename . "`\n$error\n");
+        }
+
+        // Disconnect from the remote server
+        $sftp->disconnect();
     }
 
     public function fetch()
