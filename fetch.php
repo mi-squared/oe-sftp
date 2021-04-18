@@ -19,12 +19,19 @@ $_SESSION['site_id'] = 'default';
 
 require_once(__DIR__."/../../../globals.php");
 
-// First check to make sure the fetch job isn't paused
-$enabled = \Mi2\SFTP\Services\SFTPService::isFetchEnabled();
-if ($enabled) {
-    // Iterate over all servers and fetch a batch
-    for ($iServerId = 1; $iServerId <= \Mi2\SFTP\Services\SFTPService::NUM_SERVERS; $iServerId++) {
-        $batch = \Mi2\SFTP\Services\SFTPService::create($iServerId);
-        $batch->fetch();
-    }
+$server_id = $argv[1];
+if ($server_id === null) {
+    echo "Server ID was not set\n";
+    exit;
+}
+
+$server = \Mi2\SFTP\Services\SFTPService::makeServerUsingGlobalsId($server_id);
+if ($server === null) {
+    echo "Server `$server_id` not found\n";
+    exit;
+}
+
+if ($server->isFetchEnabled()) {
+    $batch = new \Mi2\SFTP\Models\FetchFileBatch($server);
+    $batch->fetch();
 }

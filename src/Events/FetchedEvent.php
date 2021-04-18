@@ -23,11 +23,6 @@ use Symfony\Component\EventDispatcher\Event;
  */
 class FetchedEvent extends Event
 {
-    /**
-     * The customFilter event occurs in the library/appointments.inc.php file in the fetchEvents()
-     * function, which fetches an array of all appointments. Setting this object's customWhereFilter
-     * can filter appointments that show up.
-     */
     const EVENT_HANDLE = 'fetchFiles.fetched';
 
     private $file = null;

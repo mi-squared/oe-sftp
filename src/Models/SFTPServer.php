@@ -19,10 +19,12 @@ class SFTPServer
     protected $password;
     protected $remoteFetchDir;
     protected $remotePutDir;
-    protected $localPutDir;
+    protected $localPutDir; // Where files are stored locally to be "put" to remote SFTP
+    protected $localFetchDir; // Where files are stored locally once they are "fetched" from remote SFTP
     protected $deleteAfterPut;
     protected $deleteAfterFetch;
-    protected $enabled;
+    protected $putEnabled;
+    protected $fetchEnabled;
 
     protected $sftp;
 
@@ -32,11 +34,18 @@ class SFTPServer
      * SFTPServer constructor.
      * @param $id
      * @param $host
-     * @param $remoteDir
      * @param $username
      * @param $password
+     * @param $remoteFetchDir
+     * @param $remotePutDir
+     * @param $localPutDir
+     * @param $localFetchDir
+     * @param $deleteAfterPut
+     * @param $deleteAfterFetch
+     * @param $putEnabled
+     * @param $fetchEnabled
      */
-    public function __construct($id, $host, $username, $password, $remoteFetchDir, $remotePutDir, $localPutDir, $deleteAfterPut, $deleteAfterFetch, $enabled)
+    public function __construct($id, $host, $username, $password, $remoteFetchDir, $remotePutDir, $localPutDir, $localFetchDir, $deleteAfterPut, $deleteAfterFetch, $putEnabled, $fetchEnabled)
     {
         $this->id = $id;
         $this->host = $host;
@@ -45,9 +54,11 @@ class SFTPServer
         $this->remoteFetchDir = $remoteFetchDir;
         $this->remotePutDir = $remotePutDir;
         $this->localPutDir = $localPutDir;
+        $this->localFetchDir = $localFetchDir;
         $this->deleteAfterPut = $deleteAfterPut;
         $this->deleteAfterFetch = $deleteAfterFetch;
-        $this->enabled = ($enabled == 1 || $enabled == true) ? true : false;
+        $this->putEnabled = ($putEnabled == 1 || $putEnabled == true) ? true : false;
+        $this->fetchEnabled = ($fetchEnabled == 1 || $fetchEnabled == true) ? true : false;
     }
 
     /**
@@ -96,6 +107,22 @@ class SFTPServer
     public function setLocalPutDir($localPutDir): void
     {
         $this->localPutDir = $localPutDir;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getLocalFetchDir()
+    {
+        return $this->localFetchDir;
+    }
+
+    /**
+     * @param mixed $localFetchDir
+     */
+    public function setLocalFetchDir($localFetchDir): void
+    {
+        $this->localFetchDir = $localFetchDir;
     }
 
     public function connect()
@@ -237,16 +264,37 @@ class SFTPServer
         $this->deleteAfterFetch = $deleteAfterFetch;
     }
 
-    public function isEnabled()
+    /**
+     * @return bool
+     */
+    public function isPutEnabled(): bool
     {
-        return $this->enabled;
+        return $this->putEnabled;
     }
 
     /**
-     * @param mixed $enabled
+     * @param bool $putEnabled
      */
-    public function setEnabled($enabled)
+    public function setPutEnabled(bool $putEnabled): void
     {
-        $this->enabled = $enabled;
+        $this->putEnabled = $putEnabled;
     }
+
+    /**
+     * @return bool
+     */
+    public function isFetchEnabled(): bool
+    {
+        return $this->fetchEnabled;
+    }
+
+    /**
+     * @param bool $fetchEnabled
+     */
+    public function setFetchEnabled(bool $fetchEnabled): void
+    {
+        $this->fetchEnabled = $fetchEnabled;
+    }
+
+
 }

@@ -11,6 +11,10 @@ namespace Mi2\SFTP\Models;
 
 class File
 {
+    const FILE_STATUS_NEW = 'file.new';
+    const FILE_STATUS_SUCCESS = 'file.success';
+    const FILE_STATUS_ERROR = 'file.error';
+
     private $id;
     private $batchId;
     private $filename;

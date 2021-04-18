@@ -105,8 +105,11 @@ class SFTPService
     {
         $event->getGlobalsService()->createSection("SFTP", "Connectors");
 
-        $setting = new GlobalSetting( "$name SFTP Enable", 'bool', false, "Enable SFTP sending and receiving" );
+        $setting = new GlobalSetting( "$name SFTP Put Enable", 'bool', false, "Enable SFTP sending" );
         $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_enable_$id", $setting );
+
+        $setting = new GlobalSetting( "$name SFTP Fetch Enable", 'bool', false, "Enable SFTP receiving" );
+        $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_fetch_enable_$id", $setting );
 
         $setting = new GlobalSetting( "$name SFTP Delete After Put", 'bool', false, "Delete local files after putting" );
         $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_delete_put_$id", $setting );
@@ -126,13 +129,16 @@ class SFTPService
         $setting = new GlobalSetting( "$name SFTP Port", 'text', 22, "Remote Port" );
         $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_port_$id", $setting );
 
-        $setting = new GlobalSetting( "$name SFTP Local Outbox Dir", 'text', "/$id/out", "Where OpenEMR places output relative to documents dir" );
+        $setting = new GlobalSetting( "$name SFTP Local Outbox Dir (files to be put)", 'text', "/$id/out", "Where OpenEMR places files to be put, relative to documents dir" );
         $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_local_out_dir_$id", $setting );
 
-        $setting = new GlobalSetting( "$name SFTP Remote Inbox Dir", 'text', '/in', "Where NextStep receives input on remote host" );
+        $setting = new GlobalSetting( "$name SFTP Local Inbox Dir (after files fetched)", 'text', "/$id/inbox", "Where OpenEMR places files after they are fetched, relative to documents dir" );
+        $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_local_in_dir_$id", $setting );
+
+        $setting = new GlobalSetting( "$name SFTP Remote Dir Where OpenEMR Puts Files To", 'text', '/in', "Where NextStep receives input on remote host" );
         $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_remote_in_dir_$id", $setting );
 
-        $setting = new GlobalSetting( "$name SFTP Remote Outbox Dir", 'text', '/out', "Where NextStep places output on remote host" );
+        $setting = new GlobalSetting( "$name SFTP Remote Dir Where OpenEMR Fetches Files From)", 'text', '/out', "Where NextStep places output on remote host" );
         $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_remote_out_dir_$id", $setting );
 
         return $event;
@@ -148,9 +154,11 @@ class SFTPService
             $GLOBALS["oe_sftp_server_remote_out_dir_$id"],
             $GLOBALS["oe_sftp_server_remote_in_dir_$id"],
             $GLOBALS["oe_sftp_server_local_out_dir_$id"],
+            $GLOBALS["oe_sftp_server_local_in_dir_$id"],
             $GLOBALS["oe_sftp_server_delete_put_$id"],
             $GLOBALS["oe_sftp_server_delete_fetch_$id"],
-            $GLOBALS["oe_sftp_server_enable_$id"]
+            $GLOBALS["oe_sftp_server_enable_$id"],
+            $GLOBALS["oe_sftp_server_fetch_enable_$id"]
         );
 
         return $server;
@@ -159,11 +167,12 @@ class SFTPService
     public static function insertBatch(Batch $batch)
     {
         $sql = "INSERT INTO `fetched_file_batches` SET
+          `batch_type` = ?,
           `server_id` = ?,
           `start_datetime` = ?,
           `end_datetime` = ?";
 
-        $batchId = sqlInsert($sql, [$batch->getServerId(), $batch->getStartDatetime(), $batch->getEndDatetime()]);
+        $batchId = sqlInsert($sql, [$batch->getBatchType(), $batch->getServerId(), $batch->getStartDatetime(), $batch->getEndDatetime()]);
 
         return self::fetchBatch($batchId);
     }
@@ -172,7 +181,7 @@ class SFTPService
     {
         $sql = "SELECT * FROM `fetched_file_batches` WHERE `id` = ?";
         $row = sqlQuery($sql, [$batchId]);
-        $batch = new Batch($row['id'], $row['server_id'], $row['start_datetime'], $row['end_datetime']);
+        $batch = new Batch($row['id'], $row['server_id'], $row['batch_type'], $row['start_datetime'], $row['end_datetime']);
         return $batch;
     }
 
@@ -180,11 +189,13 @@ class SFTPService
     {
         $sql = "UPDATE `fetched_file_batches` SET
           `server_id` = ?,
+          `status` = ?,
+          `batch_type` = ?,
           `start_datetime` = ?,
           `end_datetime` = ?
           WHERE `id` = ?";
 
-        sqlStatement($sql, [$batch->getServerId(), $batch->getStartDatetime(), $batch->getEndDatetime(), $batch->getId()]);
+        sqlStatement($sql, [$batch->getServerId(),$batch->getStatus(), $batch->getBatchType(), $batch->getStartDatetime(), $batch->getEndDatetime(), $batch->getId()]);
 
         return $batch;
     }
@@ -193,8 +204,24 @@ class SFTPService
     {
         $sql = "SELECT * FROM `fetched_file_batches` ORDER BY end_datetime DESC LIMIT 1";
         $row = sqlQuery($sql);
-        $batch = new Batch($row['id'], $row['server_id'], $row['start_datetime'], $row['end_datetime']);
+        $batch = new Batch($row['id'], $row['server_id'], $row['batch_type'], $row['start_datetime'], $row['end_datetime']);
         return $batch;
+    }
+
+    public static function insertBatchMessage(Batch $batch, $message)
+    {
+        if ($batch->getId() === null) {
+            $batch = SFTPService::insertBatch($batch);
+        }
+
+        $sql = "INSERT INTO `fetched_file_files_meta` SET
+          `file_id` = ?,
+          `meta_key` = ?,
+          `meta_value` = ?,
+          `options` = ?";
+
+        $metaId = sqlInsert($sql, [$batch->getId(), "batch_message", $message, ""]);
+        return $metaId;
     }
 
     public static function insertMessage(File $file, $message)
@@ -207,6 +234,28 @@ class SFTPService
 
         $metaId = sqlInsert($sql, [$file->getId(), "message", $message, ""]);
         return $metaId;
+    }
+
+    public static function fetchMessagesForBatchId($batch_id)
+    {
+        $messages = [];
+        $sql = "SELECT `meta_value` AS `message` FROM `fetched_file_files_meta` WHERE `meta_key` = 'batch_message' AND `file_id` = ?";
+        $result = sqlStatement($sql, [$batch_id]);
+        while ($row = sqlFetchArray($result)) {
+            $messages[] = $row['message'];
+        }
+        return $messages;
+    }
+
+    public static function fetchMessagesForFileId($file_id)
+    {
+        $messages = [];
+        $sql = "SELECT `meta_value` AS `message` FROM `fetched_file_files_meta` WHERE `meta_key` = 'message' AND `file_id` = ?";
+        $result = sqlStatement($sql, [$file_id]);
+        while ($row = sqlFetchArray($result)) {
+            $messages[] = $row['message'];
+        }
+        return $messages;
     }
 
     public static function fetchFilesInBatch($batchId)
@@ -233,6 +282,20 @@ class SFTPService
         $fileId = sqlInsert($sql, [$file->getBatchId(), $file->getFilename(), $file->getFilesize(), $file->getStatus(), $file->getCreatedDate()]);
 
         return self::fetchFile($fileId);
+    }
+
+    public static function updateFile(File $file)
+    {
+        $sql = "UPDATE `fetched_file_files` SET
+          `batch_id` = ?,
+          `filename` = ?,
+          `filesize` = ?,
+          `status` = ?,
+          `date_created` = ? WHERE `id` = ?";
+
+        $result = sqlStatement($sql, [$file->getBatchId(), $file->getFilename(), $file->getFilesize(), $file->getStatus(), $file->getCreatedDate(), $file->getId()]);
+
+        return self::fetchFile($file->getId());
     }
 
     public static function fetchFile($fileId)
@@ -272,5 +335,34 @@ class SFTPService
             $files[]= $file;
         }
         return $files;
+    }
+
+    public static function fetchFilesSince($date = null)
+    {
+        if ($date === null) {
+            $date = date('Y-m-d', strtotime('-1 week'));
+        }
+
+        $sql = "SELECT F.id as file_id, B.id as batch_id, B.server_id, B.batch_type, B.status as batch_status, F.status as file_status, F.filename, F.date_created AS file_created_date, B.start_datetime AS batch_created_date FROM `fetched_file_batches` B
+            LEFT JOIN `fetched_file_files` F ON F.batch_id = B.id
+            WHERE `B`.`start_datetime` >= ?";
+
+        $result = sqlStatement($sql, [$date]);
+
+        return $result;
+    }
+
+    public static function getColumns()
+    {
+        return [
+            'Batch ID' => 'batch_id',
+            'File ID' => 'file_id',
+            'Server ID' => 'server_id',
+            'Put/Fetch' => 'batch_type',
+            'Status' => 'status',
+            'File Name' => 'filename',
+            'Created Time' => 'date_created',
+            'Messages' => 'messages'
+        ];
     }
 }

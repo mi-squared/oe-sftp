@@ -6,6 +6,9 @@
  * Time: 12:41 PM
  */
 
+use Mi2\SFTP\Models\Batch;
+use Mi2\SFTP\Services\SFTPService;
+
 if (php_sapi_name() !== 'cli') {
     exit;
 }
@@ -19,31 +22,52 @@ $_SESSION['site_id'] = 'default';
 
 require_once(__DIR__."/../../../globals.php");
 
+
+
 $server_id = $argv[1];
+$batch = new Batch(null, $server_id, Batch::BATCH_TYPE_PUT, date('Y-m-d H:i:s'), date('Y-m-d H:i:s'));
+$batch = SFTPService::insertBatch($batch);
 if ($server_id === null) {
-    echo "Server ID was not set\n";
+    $message = "Server ID was not set\n";
+    SFTPService::insertBatchMessage($batch, $message);
     exit;
 }
 
 $path_of_file_to_put = $argv[2];
 if ($path_of_file_to_put === null) {
-    echo "Path to file not set\n";
+    $message =  "Path to file not set\n";
+    SFTPService::insertBatchMessage($batch, $message);
     exit;
 }
 
 if (!file_exists($path_of_file_to_put)) {
-    echo "Local file does not exist\n";
+    $message = "Local file does not exist\n";
+    SFTPService::insertBatchMessage($batch, $message);
     exit;
 }
 
-$server = \Mi2\SFTP\Services\SFTPService::makeServerUsingGlobalsId($server_id);
+$server = SFTPService::makeServerUsingGlobalsId($server_id);
 if ($server === null) {
-    echo "Server `$server_id` not found\n";
+    $message = "Server `$server_id` not found\n";
+    SFTPService::insertBatchMessage($batch, $message);
     exit;
 }
 
-if ($server->isEnabled()) {
-    $batch = new \Mi2\SFTP\Models\PutFileBatch($server);
-    $batch->put_file($path_of_file_to_put);
+if ($server->isPutEnabled()) {
+    $put = new \Mi2\SFTP\Models\PutFileBatch($server, $batch);
+    $return = $put->put_file($path_of_file_to_put);
+    if ($return === true) {
+        $batch->setStatus(Batch::BATCH_STATUS_SUCCESS);
+        SFTPService::updateBatch($batch);
+    } else {
+        // an error occured, and the put_file() function returned a message
+        $batch->setStatus(Batch::BATCH_STATUS_ERROR);
+        SFTPService::updateBatch($batch);
+        SFTPService::insertBatchMessage($batch, $return);
+    }
+} else {
+    // Server not enabled for put, should alert user
+    $message = "SFTP put was not executed for `$path_of_file_to_put` on server `{$server_id}` because put is not enabled for server";
+    SFTPService::insertBatchMessage($batch, $message);
 }
 

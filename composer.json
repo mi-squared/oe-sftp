@@ -10,7 +10,10 @@
         }
     ],
     "minimum-stability": "dev",
-    "require": {},
+    "require": {
+        "mi-squared/mi-framework": "dev-master",
+        "mi-squared/oe-module-installer-plugin": "dev-master"
+    },
     "autoload": {
         "psr-4": {"Mi2\\SFTP\\": "src/"}
     }
