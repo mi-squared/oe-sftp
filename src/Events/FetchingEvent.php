@@ -36,7 +36,7 @@ class FetchingEvent extends Event
 
     private $doFetch = true;
 
-    private $doRemoteDelete = false;
+    private $doRemoteDelete = false; // Should we remote delete no matter what, even if we don't fetch? most likely not.
 
     /**
      *
