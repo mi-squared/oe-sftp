@@ -25,6 +25,10 @@ class PutFileBatch
         $this->server = $server;
         $this->batch = $batch;
         $this->localStorageDir = $localStorageDir;
+        if ($localStorageDir === null) {
+            $this->localStorageDir = $server->getLocalPutDir();
+        }
+
         $this->batchSize = $batchSize;
     }
 
@@ -68,10 +72,40 @@ class PutFileBatch
         if (false === $sftp->put($filename, $put_file_contents)) {
             $sftp->disconnect();
             $error = $sftp->getLastSFTPError();
+
+            // Put the file in the 'failure' directory
+            $failure_dir = $GLOBALS['OE_SITE_DIR'] . DIRECTORY_SEPARATOR .
+                'documents' . DIRECTORY_SEPARATOR .
+                $this->localStorageDir . DIRECTORY_SEPARATOR . 'failure';
+            SFTPService::createIfNotExists($failure_dir);
+            $failure_filename = $failure_dir . DIRECTORY_SEPARATOR . $filename;
+            file_put_contents($failure_filename, $put_file_contents);
+
+            // Remove the original downloaded file
+            unlink($path_to_file);
+
+            // Update the link to file
+            $file->setFilename($failure_filename);
+            SFTPService::updateFile($file);
             return "Could not put remote file file `" . $filename . "`\n$error\n";
+        } else {
+            // Put the file in the 'success' directory
+            $success_dir = $GLOBALS['OE_SITE_DIR'] . DIRECTORY_SEPARATOR .
+                'documents' . DIRECTORY_SEPARATOR .
+                $this->localStorageDir . DIRECTORY_SEPARATOR . 'success';
+            SFTPService::createIfNotExists($success_dir);
+            $success_filename = $success_dir . DIRECTORY_SEPARATOR . $filename;
+            file_put_contents($success_dir . DIRECTORY_SEPARATOR . $filename, $put_file_contents);
+
+            // Remove the original downloaded file
+            unlink($path_to_file);
+
+            // update the link to local file
+            $file->setFilename($success_filename);
+            SFTPService::updateFile($file);
         }
 
-        // Disconnect from the remote server
+        // We were successful, Disconnect from the remote server
         $sftp->disconnect();
         $file->setStatus(File::FILE_STATUS_SUCCESS);
         SFTPService::updateFile($file);

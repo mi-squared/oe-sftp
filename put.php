@@ -71,3 +71,6 @@ if ($server->isPutEnabled()) {
     SFTPService::insertBatchMessage($batch, $message);
 }
 
+echo "SUCCESS";
+exit(0);
+
