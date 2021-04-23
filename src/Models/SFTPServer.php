@@ -143,9 +143,11 @@ class SFTPServer
             SFTPService::createIfNotExists($directory, 0755);
         }
 
-        // Get the out-dir of this server.
-        $file = $directory . DIRECTORY_SEPARATOR .
-            uniqid() . '.' . $ext;
+        // Get the out-dir of this server. Make sure we have a unique name
+        do {
+            $file = $directory . DIRECTORY_SEPARATOR .
+                uniqid() . '.' . $ext;
+        } while (file_exists($file));
 
         // Write the file to disk
         file_put_contents($file, $file_contents);
