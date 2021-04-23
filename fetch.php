@@ -17,6 +17,7 @@ $fake_register_globals = false;
 $sanitize_all_escapes = true;
 $_SESSION['site_id'] = 'default';
 
+
 require_once(__DIR__."/../../../globals.php");
 
 $server_id = $argv[1];
@@ -24,6 +25,8 @@ if ($server_id === null) {
     echo "Server ID was not set\n";
     exit;
 }
+
+$_SESSION['authUser'] = $server_id;
 
 $server = \Mi2\SFTP\Services\SFTPService::makeServerUsingGlobalsId($server_id);
 if ($server === null) {
