@@ -11,12 +11,11 @@ if (php_sapi_name() !== 'cli') {
 }
 
 session_name("OpenEMR");
-echo "In fetch\n";
 $ignoreAuth = true;
 $fake_register_globals = false;
 $sanitize_all_escapes = true;
 $_SESSION['site_id'] = 'default';
-
+set_time_limit(0);
 
 require_once(__DIR__."/../../../globals.php");
 
