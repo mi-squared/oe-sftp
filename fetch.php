@@ -14,7 +14,9 @@ session_name("OpenEMR");
 $ignoreAuth = true;
 $fake_register_globals = false;
 $sanitize_all_escapes = true;
+$_SESSION['site'] = 'default';
 $_SESSION['site_id'] = 'default';
+$_SERVER['HTTP_HOST'] = 'localhost';
 set_time_limit(0);
 
 require_once(__DIR__."/../../../globals.php");
