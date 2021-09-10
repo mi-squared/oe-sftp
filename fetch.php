@@ -26,14 +26,17 @@ $lock_file_directory = $GLOBALS['OE_SITE_DIR'] . DIRECTORY_SEPARATOR . 'document
 $lock_file = fopen($lock_file_directory . 'fetch.pid', 'c');
 $got_lock = flock($lock_file, LOCK_EX | LOCK_NB, $wouldblock);
 if ($lock_file === false || (!$got_lock && !$wouldblock)) {
-    throw new Exception(
-        "Unexpected error opening or locking lock file. Perhaps you " .
+    $message = "Unexpected error opening or locking lock file. Perhaps you " .
         "don't  have permission to write to the lock file or its " .
-        "containing directory?"
-    );
+        "containing directory?";
+    //throw new Exception($message);
+    error_log($message);
+    exit;
 }
 else if (!$got_lock && $wouldblock) {
-    exit("Another instance is already running; terminating.\n");
+    $message = "Another instance is already running; terminating.\n";
+    error_log($message);
+    exit($message);
 }
 
 // Lock acquired; let's write our PID to the lock file for the convenience
