@@ -143,20 +143,32 @@ class SFTPServer
             SFTPService::createIfNotExists($directory, 0755);
         }
 
-        // Get the out-dir of this server.
-        $file = $directory . DIRECTORY_SEPARATOR .
-            uniqid() . '.' . $ext;
+        // Get the out-dir of this server. Make sure we have a unique name
+        do {
+            $file = $directory . DIRECTORY_SEPARATOR .
+                uniqid() . '.' . $ext;
+        } while (file_exists($file));
 
         // Write the file to disk
         file_put_contents($file, $file_contents);
         $binary_path = $GLOBALS['perl_bin_dir'];
         $php = $binary_path . '/php';
         $server_id = $this->getId();
-        // Tell the server to SFTP the file
-        $script = __DIR__ . "/../../put.php";
-        $proc = shell_exec("$php $script '$server_id' '$file' > /dev/null 2>&1 &");
-        if ($this->debugPrint) {
-            echo $proc;
+        if (!file_exists($php)) {
+            // If the path to our binary doesn't exist, alert the user
+            $batch = new Batch(null, $server_id, Batch::BATCH_TYPE_PUT, date('Y-m-d H:i:s'), date('Y-m-d H:i:s'));
+            $batch->setStatus(Batch::BATCH_STATUS_ERROR);
+            $batch = SFTPService::insertBatch($batch);
+            SFTPService::insertBatchMessage($batch, "Could not execute async put command using shell_exec(), check path to binaries in Globals > Misc");
+        } else {
+
+            // Tell the server to SFTP the file
+            $script = __DIR__ . "/../../put.php";
+            $proc = shell_exec("$php $script '$server_id' '$file' > /dev/null 2>&1 &");
+
+            if ($this->debugPrint) {
+                echo $proc;
+            }
         }
     }
 

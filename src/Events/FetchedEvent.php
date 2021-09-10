@@ -40,6 +40,8 @@ class FetchedEvent extends Event
     {
         $this->file = $file;
         $this->server = $server;
+        // Allow the server settings in globals to be the default behavior for "delete after fetch"
+        $this->doRemoteDelete = $server->getDeleteAfterFetch();
         $this->init();
     }
 

@@ -18,7 +18,9 @@ echo "In put\n";
 $ignoreAuth = true;
 $fake_register_globals = false;
 $sanitize_all_escapes = true;
+$_SESSION['site'] = 'default';
 $_SESSION['site_id'] = 'default';
+$_SERVER['HTTP_HOST'] = 'localhost';
 
 require_once(__DIR__."/../../../globals.php");
 
@@ -70,4 +72,7 @@ if ($server->isPutEnabled()) {
     $message = "SFTP put was not executed for `$path_of_file_to_put` on server `{$server_id}` because put is not enabled for server";
     SFTPService::insertBatchMessage($batch, $message);
 }
+
+echo "SUCCESS";
+exit(0);
 
