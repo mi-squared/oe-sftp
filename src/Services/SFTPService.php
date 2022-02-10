@@ -103,7 +103,11 @@ class SFTPService
      */
     public static function buildServerGlobalConfig(GlobalsInitializedEvent $event, $name, $id)
     {
-        $event->getGlobalsService()->createSection("SFTP", "Connectors");
+        try {
+            $event->getGlobalsService()->createSection("SFTP", "Connectors");
+        } catch (\Exception $e) {
+            // It's ok if the section exists
+        }
 
         $setting = new GlobalSetting( "$name SFTP Put Enable", 'bool', false, "Enable SFTP sending" );
         $event->getGlobalsService()->appendToSection( "SFTP", "oe_sftp_server_enable_$id", $setting );
