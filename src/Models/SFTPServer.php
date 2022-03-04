@@ -133,7 +133,7 @@ class SFTPServer
     }
 
 
-    public function file_put_contents_background($file_contents, $ext)
+    public function file_put_contents_background($file_contents, $ext, $filename)
     {
         $directory = $GLOBALS['OE_SITE_DIR'] . DIRECTORY_SEPARATOR .
             'documents' . DIRECTORY_SEPARATOR .
@@ -143,11 +143,17 @@ class SFTPServer
             SFTPService::createIfNotExists($directory, 0755);
         }
 
-        // Get the out-dir of this server. Make sure we have a unique name
-        do {
+        // If we are provided with a fully-specified filename, use that, otherwise, generate one with ext as extension
+        if ($filename !== null) {
             $file = $directory . DIRECTORY_SEPARATOR .
-                uniqid() . '.' . $ext;
-        } while (file_exists($file));
+                $filename;
+        } else {
+            // Generate a unique filename. Get the out-dir of this server. Make sure we have a unique name
+            do {
+                $file = $directory . DIRECTORY_SEPARATOR .
+                    uniqid() . '.' . $ext;
+            } while (file_exists($file));
+        }
 
         // Write the file to disk
         file_put_contents($file, $file_contents);
@@ -164,7 +170,8 @@ class SFTPServer
 
             // Tell the server to SFTP the file
             $script = __DIR__ . "/../../put.php";
-            $proc = shell_exec("$php $script '$server_id' '$file' > /dev/null 2>&1 &");
+            $command = "$php $script '$server_id' '$file'";
+            $proc = shell_exec($command);
 
             if ($this->debugPrint) {
                 echo $proc;

@@ -87,10 +87,10 @@ class SFTPService
         return $enabled;
     }
 
-    public static function put($server_id, $file_contents, $ext = 'json')
+    public static function put($server_id, $file_contents, $ext = 'json', $filename = null)
     {
         $server = self::makeServerUsingGlobalsId($server_id);
-        return $server->file_put_contents_background($file_contents, $ext);
+        return $server->file_put_contents_background($file_contents, $ext, $filename);
     }
 
     /**
