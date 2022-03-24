@@ -50,7 +50,7 @@ class FetchFileBatch
             // insert the batch so we can log an error message
             $sftp->disconnect();
             $error = $sftp->getLastSFTPError();
-            $message = "Could not change directory to `" . $this->server->getRemotePutDir() . "`\n$error\n";
+            $message = "Could not change directory to `" . $this->server->getRemoteFetchDir() . "`\n$error\n";
             SFTPService::insertBatchMessage($batch, $message);
             die($message);
         }
